@@ -1,0 +1,10 @@
+# Node modules
+calidad-frontend/node_modules/
+
+# Archivos de entorno sensibles
+calidad-backend/config/bd.php
+
+# Otros archivos temporales
+*.log
+.DS_Store
+.env
