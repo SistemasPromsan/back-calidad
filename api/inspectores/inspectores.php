@@ -13,12 +13,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// ✅ Corrección aquí:
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../config/bd.php';
 
 try {
-    $stmt = $pdo->query("SELECT id, inspector, descripcion, estatus, creado_en FROM inspectores ORDER BY creado_en ASC");
+    // Renombramos 'inspector' como 'nombre' para que sea compatible con el frontend
+    $stmt = $pdo->query("
+        SELECT 
+            id, 
+            inspector AS nombre, 
+            descripcion, 
+            estatus, 
+            creado_en 
+        FROM inspectores 
+        WHERE estatus = 'activo'
+        ORDER BY creado_en ASC
+    ");
     $inspectores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(is_array($inspectores) ? $inspectores : []);

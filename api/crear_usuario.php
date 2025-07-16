@@ -1,10 +1,10 @@
 <?php
 
-header("Access-Control-Allow-Origin: *"); // Puedes restringirlo a tu dominio si lo deseas
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json");
 
-// Si es preflight OPTIONS, finaliza la ejecución
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
@@ -15,14 +15,34 @@ require_once __DIR__ . '/../config/bd.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 
-if (!$data || !$data['nombre'] || !$data['username'] || !$data['email'] || !$data['password'] || !$data['id_rol']) {
+// Validar datos requeridos
+if (
+    !$data ||
+    empty($data['nombre']) ||
+    empty($data['username']) ||
+    empty($data['email']) ||
+    empty($data['password']) ||
+    empty($data['id_rol'])
+) {
     http_response_code(400);
-    echo json_encode(['error' => 'Datos incompletos']);
+    echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
     exit;
 }
 
 try {
-    $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, username, email, password, id_rol, estado, creado_en) VALUES (?, ?, ?, ?, ?, 'activo', NOW())");
+    // Validar si el username o email ya existen
+    $check = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE username = ? OR email = ?");
+    $check->execute([$data['username'], $data['email']]);
+    if ($check->fetchColumn() > 0) {
+        echo json_encode(['success' => false, 'error' => 'El usuario o correo ya existe']);
+        exit;
+    }
+
+    // Insertar usuario
+    $stmt = $pdo->prepare("
+        INSERT INTO usuarios (nombre, username, email, password, id_rol, estado, creado_en) 
+        VALUES (?, ?, ?, ?, ?, 'activo', NOW())
+    ");
     $hash = password_hash($data['password'], PASSWORD_DEFAULT);
     $stmt->execute([
         $data['nombre'],
@@ -31,7 +51,9 @@ try {
         $hash,
         $data['id_rol']
     ]);
+
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
-    echo json_encode(['error' => $e->getMessage()]);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Error al guardar: ' . $e->getMessage()]);
 }

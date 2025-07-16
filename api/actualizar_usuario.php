@@ -1,41 +1,69 @@
 <?php
 
-// Permitir peticiones desde el frontend
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json");
 
-// Manejar preflight (pre-solicitud)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
-}   
+}
 
 require_once __DIR__ . '/../config/cors.php';
 require_once __DIR__ . '/../config/bd.php';
 
-$data = json_decode(file_get_contents('php://input'), true);
+$data = json_decode(file_get_contents("php://input"), true);
 
-if (!$data || !$data['id']) {
+// Validar
+if (
+    !$data ||
+    empty($data['id']) ||
+    empty($data['nombre']) ||
+    empty($data['username']) ||
+    empty($data['email']) ||
+    empty($data['id_rol'])
+) {
     http_response_code(400);
-    echo json_encode(['error' => 'ID requerido']);
+    echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
     exit;
 }
 
 try {
-    $sql = "UPDATE usuarios SET nombre = ?, username = ?, email = ?, id_rol = ?" .
-        (isset($data['password']) && $data['password'] ? ", password = ?" : "") .
-        " WHERE id = ?";
-    $params = [$data['nombre'], $data['username'], $data['email'], $data['id_rol']];
-
-    if (isset($data['password']) && $data['password']) {
-        $params[] = password_hash($data['password'], PASSWORD_DEFAULT);
+    if (!empty($data['password'])) {
+        // Con contraseña nueva
+        $stmt = $pdo->prepare("
+            UPDATE usuarios 
+            SET nombre = ?, username = ?, email = ?, password = ?, id_rol = ? 
+            WHERE id = ?
+        ");
+        $hash = password_hash($data['password'], PASSWORD_DEFAULT);
+        $stmt->execute([
+            $data['nombre'],
+            $data['username'],
+            $data['email'],
+            $hash,
+            $data['id_rol'],
+            $data['id']
+        ]);
+    } else {
+        // Sin cambiar contraseña
+        $stmt = $pdo->prepare("
+            UPDATE usuarios 
+            SET nombre = ?, username = ?, email = ?, id_rol = ? 
+            WHERE id = ?
+        ");
+        $stmt->execute([
+            $data['nombre'],
+            $data['username'],
+            $data['email'],
+            $data['id_rol'],
+            $data['id']
+        ]);
     }
 
-    $params[] = $data['id'];
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
-    echo json_encode(['error' => $e->getMessage()]);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Error al actualizar: ' . $e->getMessage()]);
 }

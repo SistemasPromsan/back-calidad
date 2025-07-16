@@ -1,23 +1,26 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *'); // Solo para desarrollo local
+header('Access-Control-Allow-Origin: *'); // Solo para desarrollo
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/../../config/bd.php';
 
+// Leer los datos recibidos
 $data = json_decode(file_get_contents("php://input"), true);
 
-if (!$data || !isset($data['inspector']) || !isset($data['descripcion'])) {
+// Validar que se recibieron los datos necesarios
+if (!$data || !isset($data['nombre']) || !isset($data['descripcion'])) {
     echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
     exit;
 }
 
-$inspector = $data['inspector'];
+$inspector = $data['nombre']; // Se usa 'nombre' para mantener consistencia
 $descripcion = $data['descripcion'];
 $estatus = 'activo';
 
 try {
+    // Insertar en la base de datos
     $query = $pdo->prepare("INSERT INTO inspectores (inspector, descripcion, estatus, creado_en) VALUES (?, ?, ?, NOW())");
     $query->execute([$inspector, $descripcion, $estatus]);
 

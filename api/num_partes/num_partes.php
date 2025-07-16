@@ -13,10 +13,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../../config/bd.php';
 
 try {
-    $stmt = $pdo->query("SELECT * FROM num_partes ORDER BY creado_en DESC");
-    $num_partes = $stmt->fetchAll();
-    echo json_encode($num_partes);
+    // Obtener todos los num_partes con nombre de plataforma
+    $stmt = $pdo->query("
+        SELECT np.*, p.nombre AS plataforma
+        FROM num_partes np
+        LEFT JOIN plataformas p ON np.id_plataforma = p.id
+        ORDER BY np.creado_en DESC
+    ");
+    $numPartes = $stmt->fetchAll();
+
+    foreach ($numPartes as &$parte) {
+        // Obtener proveedores asociados como texto plano
+        $stmtProv = $pdo->prepare("
+            SELECT pr.nombre 
+            FROM num_partes np
+            JOIN num_parte_proveedor npp ON np.id = npp.id_num_parte
+            JOIN proveedores pr ON npp.id_proveedor = pr.id
+            WHERE np.id = ?
+        ");
+        $stmtProv->execute([$parte['id']]);
+        $proveedores = $stmtProv->fetchAll(PDO::FETCH_COLUMN);
+
+        // Agregar el campo plano esperado por el frontend
+        $parte['proveedor'] = implode(', ', $proveedores);
+    }
+
+    echo json_encode($numPartes);
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(["error" => "Error al obtener datos: " . $e->getMessage()]);
+    echo json_encode(['error' => 'Error al obtener los datos: ' . $e->getMessage()]);
 }
