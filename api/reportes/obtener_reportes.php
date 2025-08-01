@@ -1,26 +1,30 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json");
-
+require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../config/bd.php';
 
+error_log("✅ Entró correctamente al archivo obtener_reportes.php");
+
+error_log("🚀 Iniciando obtener_reportes.php");
+
 try {
+    // Obtener lista de reportes con información básica
     $stmt = $pdo->query("
-        SELECT r.*, 
-               i.nombre AS inspector_nombre,
-               t.nombre AS turno_nombre,
-               c.nombre AS cargo_nombre,
-               np.num_parte AS num_parte_codigo
+        SELECT r.id, r.fecha, r.horas_trabajadas,
+               i.inspector AS inspector,
+               s.nombre AS supervisor,
+               t.nombre AS turno
         FROM reportes r
-        JOIN inspectores i ON r.id_inspector = i.id
-        JOIN turnos t ON r.id_turno = t.id
-        JOIN cargos c ON r.id_cargo = c.id
-        JOIN num_partes np ON r.id_num_parte = np.id
-        ORDER BY r.fecha DESC, r.created_at DESC
+        LEFT JOIN inspectores i ON r.id_inspector = i.id
+        LEFT JOIN supervisores s ON r.id_supervisor = s.id
+        LEFT JOIN turnos t ON r.id_turno = t.id
+        ORDER BY r.fecha DESC
     ");
-    $reportes = $stmt->fetchAll();
+
+    $reportes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode($reportes);
-} catch (PDOException $e) {
+} catch (Exception $e) {
+    error_log("❗ Error en obtener_reportes.php: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(["error" => "Error al obtener reportes: " . $e->getMessage()]);
+    echo json_encode(["error" => "Error al obtener los reportes."]);
 }

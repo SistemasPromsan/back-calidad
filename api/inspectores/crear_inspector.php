@@ -1,9 +1,6 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *'); // Solo para desarrollo
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
 
+require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../config/bd.php';
 
 // Leer los datos recibidos
